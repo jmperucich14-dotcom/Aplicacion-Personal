@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Explorador Espacial Diario</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="site-header">
+    <h1>🚀 Explorador Espacial Diario</h1>
+    <p class="subtitle">Un globo interactivo, la foto astronómica del día, Marte, la Tierra en vivo, asteroides y lanzamientos</p>
+  </header>
+
+  <nav class="menu-nav">
+    <button id="menu-toggle" class="menu-toggle" aria-haspopup="true" aria-expanded="false">
+      <span id="menu-current">🌐 Inicio</span>
+      <span class="menu-chevron">▾</span>
+    </button>
+    <ul id="menu-list" class="menu-list hidden">
+      <li><button class="tab-btn active" data-tab="home">🌐 Inicio</button></li>
+      <li><button class="tab-btn" data-tab="apod">🖼️ Foto del día</button></li>
+      <li><button class="tab-btn" data-tab="mars">🔴 Marte</button></li>
+      <li><button class="tab-btn" data-tab="earth">🌎 Tierra</button></li>
+      <li><button class="tab-btn" data-tab="asteroids">☄️ Asteroides</button></li>
+      <li><button class="tab-btn" data-tab="camera">📷 Cámara ISS</button></li>
+      <li><button class="tab-btn" data-tab="launches">🚀 Lanzamientos</button></li>
+      <li><button class="tab-btn" data-tab="favorites">⭐ Favoritos</button></li>
+    </ul>
+  </nav>
+
+  <main>
+
+    <!-- ===== TAB 0: INICIO (globo interactivo) ===== -->
+    <section id="home" class="tab-content active">
+      <p class="intro-text">
+        Gira el globo (arrastra), acércate con el scroll o pellizcando, y haz clic en cualquier país
+        para ver su información. La franja oscura muestra dónde es de noche ahora mismo.
+      </p>
+      <div id="globe-viz" class="globe-container"></div>
+      <div class="globe-footer">
+        <span id="globe-clock" class="muted"></span>
+        <button id="globe-reset" class="btn-secondary">↺ Restablecer vista</button>
+      </div>
+      <p class="muted globe-hint">🟣 País seleccionado · pasa el mouse sobre cualquier otro para resaltarlo</p>
+      <div id="country-info" class="card country-info hidden"></div>
+    </section>
+
+    <!-- ===== TAB 1: APOD ===== -->
+    <section id="apod" class="tab-content">
+      <div class="apod-controls">
+        <label for="apod-date">Ver foto de otro día:</label>
+        <input type="date" id="apod-date" />
+        <button id="apod-search">Buscar</button>
+        <button id="apod-today">Hoy</button>
+        <button id="apod-random">🎲 Sorpréndeme</button>
+      </div>
+      <div id="apod-loading" class="loading">Cargando la foto del día...</div>
+      <div id="apod-error" class="error hidden"></div>
+      <article id="apod-content" class="card apod-card hidden">
+        <img id="apod-img" src="" alt="Foto astronómica del día" />
+        <div class="card-body">
+          <div class="card-header-row">
+            <h2 id="apod-title"></h2>
+            <button id="apod-fav-btn" class="fav-btn" title="Guardar en favoritos">☆</button>
+          </div>
+          <p id="apod-date-label" class="muted"></p>
+          <p id="apod-explanation"></p>
+          <p id="apod-copyright" class="muted"></p>
+        </div>
+      </article>
+    </section>
+
+    <!-- ===== TAB 2: MARS ===== -->
+    <section id="mars" class="tab-content">
+      <div class="mars-controls">
+        <label for="rover-select">Rover:</label>
+        <select id="rover-select">
+          <option value="curiosity">Curiosity</option>
+          <option value="perseverance">Perseverance</option>
+          <option value="opportunity">Opportunity</option>
+          <option value="spirit">Spirit</option>
+        </select>
+
+        <label for="camera-select">Cámara:</label>
+        <select id="camera-select">
+          <option value="all">Todas</option>
+        </select>
+
+        <button id="mars-reload">Actualizar</button>
+      </div>
+      <p id="mars-date-info" class="muted"></p>
+      <div id="mars-loading" class="loading">Cargando fotos de Marte...</div>
+      <div id="mars-error" class="error hidden"></div>
+      <div id="mars-grid" class="grid"></div>
+    </section>
+
+    <!-- ===== TAB 3: EARTH (EPIC) ===== -->
+    <section id="earth" class="tab-content">
+      <p class="muted">Fotos reales de la Tierra completa, tomadas por el satélite DSCOVR (a ~1.5 millones de km, en el punto de Lagrange L1).</p>
+      <div id="earth-loading" class="loading">Cargando fotos de la Tierra...</div>
+      <div id="earth-error" class="error hidden"></div>
+      <div id="earth-grid" class="grid"></div>
+    </section>
+
+    <!-- ===== TAB 4: ASTEROIDS (NeoWs) ===== -->
+    <section id="asteroids" class="tab-content">
+      <p class="muted">
+        Mapa esquemático del sistema solar interior con los asteroides que pasan cerca de la Tierra hoy
+        (catálogo NeoWs de la NASA). Haz clic en un punto para ver el detalle.
+      </p>
+      <div id="asteroids-loading" class="loading">Cargando asteroides...</div>
+      <div id="asteroids-error" class="error hidden"></div>
+
+      <div class="solar-map-wrap">
+        <svg id="solar-map" viewBox="0 0 500 460" role="img" aria-label="Mapa del sistema solar interior con asteroides cercanos a la Tierra"></svg>
+      </div>
+
+      <div class="solar-legend">
+        <span><i class="dot dot-safe"></i> Sin riesgo</span>
+        <span><i class="dot dot-hazard"></i> Potencialmente peligroso</span>
+        <span class="muted">Distancias entre planetas a escala relativa · posición y tamaño de asteroides son ilustrativos, no a escala real.</span>
+      </div>
+
+      <div id="asteroid-info" class="card country-info hidden"></div>
+    </section>
+
+    <!-- ===== TAB 5: CÁMARA EN VIVO (ISS) ===== -->
+    <section id="camera" class="tab-content">
+      <p class="muted">
+        Transmisión oficial y en vivo, 24/7, desde la Estación Espacial Internacional (ISS),
+        a unos 400 km de altura sobre la Tierra.
+      </p>
+
+      <div class="video-wrap">
+        <iframe
+          src="https://www.youtube.com/embed/live_stream?channel=UCLA_DiR1FfKNvjuUpBHmylQ"
+          title="Transmisión en vivo desde la ISS (NASA)"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen
+        ></iframe>
+      </div>
+
+      <p class="muted" style="text-align: center; margin-top: 10px;">
+        Si se ve una pantalla negra: puede ser de noche en la órbita de la ISS, o que estén
+        reposicionando la antena — es normal, la señal vuelve sola en unos minutos.
+      </p>
+
+      <div id="iss-telemetry" class="card iss-telemetry">
+        <p class="muted">Cargando posición de la ISS...</p>
+      </div>
+    </section>
+
+    <!-- ===== TAB 5: LAUNCHES ===== -->
+    <section id="launches" class="tab-content">
+      <div id="countdown-box" class="countdown-box hidden">
+        <p class="countdown-label">Próximo lanzamiento: <span id="countdown-mission"></span></p>
+        <div class="countdown-timer">
+          <div><span id="cd-days">00</span><small>días</small></div>
+          <div><span id="cd-hours">00</span><small>hrs</small></div>
+          <div><span id="cd-mins">00</span><small>min</small></div>
+          <div><span id="cd-secs">00</span><small>seg</small></div>
+        </div>
+      </div>
+
+      <div class="launches-toggle">
+        <button id="launches-upcoming-btn" class="toggle-btn active">Próximos</button>
+        <button id="launches-past-btn" class="toggle-btn">Pasados</button>
+      </div>
+
+      <div id="launches-loading" class="loading">Cargando lanzamientos...</div>
+      <div id="launches-error" class="error hidden"></div>
+      <ul id="launches-list" class="launches-list"></ul>
+    </section>
+
+    <!-- ===== TAB 4: FAVORITOS ===== -->
+    <section id="favorites" class="tab-content">
+      <p id="favorites-empty" class="muted">Todavía no has guardado favoritos. Marca fotos con ☆ en las pestañas "Foto del día", "Marte" o "Tierra".</p>
+      <div id="favorites-grid" class="grid"></div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      Datos de <a href="https://api.nasa.gov/" target="_blank" rel="noopener">NASA Open APIs</a>,
+      <a href="https://thespacedevs.com/llapi" target="_blank" rel="noopener">Launch Library 2 (The Space Devs)</a>
+      y <a href="https://wheretheiss.at/" target="_blank" rel="noopener">wheretheiss.at</a>.
+      Globo con <a href="https://globe.gl/" target="_blank" rel="noopener">globe.gl</a>.
+      Proyecto de portafolio hecho con HTML, CSS y JavaScript puro.
+    </p>
+  </footer>
+
+  <script src="script.js"></script>
+
+  <!-- Librería para el globo 3D interactivo (Inicio) -->
+  <script src="https://cdn.jsdelivr.net/npm/globe.gl"></script>
+  <script type="module" src="globe.js"></script>
+</body>
+</html>
