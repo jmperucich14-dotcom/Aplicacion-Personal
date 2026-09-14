@@ -23,7 +23,7 @@
 // DEMO_KEY funciona sin registrarte, pero tiene un límite bajo
 // (30 pedidos por hora / 50 por día). Para uso real, saca tu propia
 // key gratis en 30 segundos aquí: https://api.nasa.gov/
-const NASA_API_KEY = "DEMO_KEY";
+const NASA_API_KEY = 5hcEbI4PQPlNmUCsaDsxjxBxnUREaybWDGBvNHbI;
 
 // Cámaras disponibles por rover (la NASA no las llama igual en todos)
 const ROVER_CAMERAS = {
