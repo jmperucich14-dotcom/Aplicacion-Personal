@@ -10,7 +10,7 @@
 
   <header class="site-header">
     <h1>🚀 Explorador Espacial Diario</h1>
-    <p class="subtitle">Un globo interactivo, la foto astronómica del día, Marte, la Tierra en vivo, asteroides y lanzamientos</p>
+    <p class="subtitle">Un globo interactivo, la foto astronómica del día, Marte, la Tierra en vivo, asteroides, satélites reales y lanzamientos</p>
   </header>
 
   <nav class="menu-nav">
@@ -24,7 +24,7 @@
       <li><button class="tab-btn" data-tab="mars">🔴 Marte</button></li>
       <li><button class="tab-btn" data-tab="earth">🌎 Tierra</button></li>
       <li><button class="tab-btn" data-tab="asteroids">☄️ Asteroides</button></li>
-      <li><button class="tab-btn" data-tab="camera">📷 Cámara ISS</button></li>
+      <li><button class="tab-btn" data-tab="satellites">🛰️ Satélites</button></li>
       <li><button class="tab-btn" data-tab="launches">🚀 Lanzamientos</button></li>
       <li><button class="tab-btn" data-tab="favorites">⭐ Favoritos</button></li>
     </ul>
@@ -107,9 +107,16 @@
     <!-- ===== TAB 4: ASTEROIDS (NeoWs) ===== -->
     <section id="asteroids" class="tab-content">
       <p class="muted">
-        Mapa esquemático del sistema solar interior con los asteroides que pasan cerca de la Tierra hoy
-        (catálogo NeoWs de la NASA). Haz clic en un punto para ver el detalle.
+        Mapa esquemático del sistema solar interior con los asteroides que pasan cerca de la Tierra
+        (catálogo NeoWs de la NASA). Elige un día, haz clic en un punto o en una fila de la lista
+        para ver el detalle.
       </p>
+
+      <div class="asteroid-controls">
+        <label for="asteroid-day-select">Día:</label>
+        <select id="asteroid-day-select"></select>
+      </div>
+
       <div id="asteroids-loading" class="loading">Cargando asteroides...</div>
       <div id="asteroids-error" class="error hidden"></div>
 
@@ -120,39 +127,64 @@
       <div class="solar-legend">
         <span><i class="dot dot-safe"></i> Sin riesgo</span>
         <span><i class="dot dot-hazard"></i> Potencialmente peligroso</span>
-        <span class="muted">Distancias entre planetas a escala relativa · posición y tamaño de asteroides son ilustrativos, no a escala real.</span>
+        <span class="muted">Tamaño del punto ≈ diámetro estimado (escala logarítmica) · posición ilustrativa, no a escala real.</span>
       </div>
 
       <div id="asteroid-info" class="card country-info hidden"></div>
+
+      <div class="asteroid-list-wrap">
+        <table class="asteroid-table" id="asteroid-table">
+          <thead>
+            <tr>
+              <th data-sort="name">Nombre</th>
+              <th data-sort="distance" class="sorted-asc">Distancia mín.</th>
+              <th data-sort="diameter">Diámetro máx.</th>
+              <th data-sort="speed">Velocidad</th>
+              <th data-sort="hazard">Riesgo</th>
+            </tr>
+          </thead>
+          <tbody id="asteroid-table-body"></tbody>
+        </table>
+      </div>
     </section>
 
-    <!-- ===== TAB 5: CÁMARA EN VIVO (ISS) ===== -->
-    <section id="camera" class="tab-content">
+    <!-- ===== TAB 5: SATÉLITES EN VIVO (TLE + SGP4) ===== -->
+    <section id="satellites" class="tab-content">
       <p class="muted">
-        Transmisión oficial y en vivo, 24/7, desde la Estación Espacial Internacional (ISS),
-        a unos 400 km de altura sobre la Tierra.
+        Elige un satélite real y sigue su posición en vivo, calculada en tu navegador con el mismo
+        modelo matemático (SGP4) que usan las agencias espaciales para predecir órbitas.
       </p>
 
-      <div class="video-wrap">
-        <iframe
-          src="https://www.youtube.com/embed/live_stream?channel=UCLA_DiR1FfKNvjuUpBHmylQ"
-          title="Transmisión en vivo desde la ISS (NASA)"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen
-        ></iframe>
+      <div class="sat-controls">
+        <label for="sat-select">Satélite:</label>
+        <select id="sat-select">
+          <option value="25544">🛰️ Estación Espacial Internacional (ISS)</option>
+          <option value="20580">🔭 Telescopio Espacial Hubble</option>
+          <option value="48274">🇨🇳 Estación Espacial China (Tiangong)</option>
+          <option value="43013">🌦️ NOAA-20 (satélite meteorológico)</option>
+          <option value="41866">🌎 GOES-16 (satélite geoestacionario)</option>
+        </select>
       </div>
 
-      <p class="muted" style="text-align: center; margin-top: 10px;">
-        Si se ve una pantalla negra: puede ser de noche en la órbita de la ISS, o que estén
-        reposicionando la antena — es normal, la señal vuelve sola en unos minutos.
+      <div id="sat-loading" class="loading">Cargando datos orbitales...</div>
+      <div id="sat-error" class="error hidden"></div>
+
+      <div id="sat-map-wrap" class="sat-map-wrap hidden">
+        <div id="sat-map" class="sat-map">
+          <div id="sat-marker" class="sat-marker"></div>
+        </div>
+      </div>
+
+      <div id="sat-telemetry" class="card country-info hidden"></div>
+
+      <p class="muted" style="margin-top: 10px;">
+        Datos orbitales (TLE) de <a href="https://celestrak.org/" target="_blank" rel="noopener">CelesTrak</a>,
+        posición calculada con <a href="https://github.com/shashwatak/satellite-js" target="_blank" rel="noopener">satellite.js</a>
+        (modelo SGP4). Si el navegador bloquea la consulta a CelesTrak, este panel te lo va a avisar.
       </p>
-
-      <div id="iss-telemetry" class="card iss-telemetry">
-        <p class="muted">Cargando posición de la ISS...</p>
-      </div>
     </section>
 
-    <!-- ===== TAB 5: LAUNCHES ===== -->
+    <!-- ===== TAB 6: LAUNCHES ===== -->
     <section id="launches" class="tab-content">
       <div id="countdown-box" class="countdown-box hidden">
         <p class="countdown-label">Próximo lanzamiento: <span id="countdown-mission"></span></p>
@@ -174,7 +206,7 @@
       <ul id="launches-list" class="launches-list"></ul>
     </section>
 
-    <!-- ===== TAB 4: FAVORITOS ===== -->
+    <!-- ===== TAB 7: FAVORITOS ===== -->
     <section id="favorites" class="tab-content">
       <p id="favorites-empty" class="muted">Todavía no has guardado favoritos. Marca fotos con ☆ en las pestañas "Foto del día", "Marte" o "Tierra".</p>
       <div id="favorites-grid" class="grid"></div>
@@ -185,9 +217,11 @@
   <footer class="site-footer">
     <p>
       Datos de <a href="https://api.nasa.gov/" target="_blank" rel="noopener">NASA Open APIs</a>,
-      <a href="https://thespacedevs.com/llapi" target="_blank" rel="noopener">Launch Library 2 (The Space Devs)</a>
-      y <a href="https://wheretheiss.at/" target="_blank" rel="noopener">wheretheiss.at</a>.
-      Globo con <a href="https://globe.gl/" target="_blank" rel="noopener">globe.gl</a>.
+      <a href="https://thespacedevs.com/llapi" target="_blank" rel="noopener">Launch Library 2 (The Space Devs)</a>,
+      <a href="https://wheretheiss.at/" target="_blank" rel="noopener">wheretheiss.at</a>
+      y <a href="https://celestrak.org/" target="_blank" rel="noopener">CelesTrak</a>.
+      Globo con <a href="https://globe.gl/" target="_blank" rel="noopener">globe.gl</a>,
+      órbitas con <a href="https://github.com/shashwatak/satellite-js" target="_blank" rel="noopener">satellite.js</a>.
       Proyecto de portafolio hecho con HTML, CSS y JavaScript puro.
     </p>
   </footer>
@@ -197,5 +231,8 @@
   <!-- Librería para el globo 3D interactivo (Inicio) -->
   <script src="https://cdn.jsdelivr.net/npm/globe.gl"></script>
   <script type="module" src="globe.js"></script>
+
+  <!-- Módulo para la pestaña "Satélites" (calcula órbitas reales en el navegador) -->
+  <script type="module" src="satellites.js"></script>
 </body>
 </html>

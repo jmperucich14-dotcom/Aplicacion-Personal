@@ -1,13 +1,14 @@
 # 🚀 Explorador Espacial Diario
 
-Proyecto de portafolio hecho con **HTML + CSS + JavaScript puro** (sin frameworks, sin backend). La página de Inicio tiene un globo 3D interactivo (con [globe.gl](https://globe.gl/)), y el resto de las secciones (accesibles desde el menú desplegable ☰) consumen APIs públicas gratuitas de la NASA y de The Space Devs:
+Proyecto de portafolio hecho con **HTML + CSS + JavaScript puro** (sin frameworks, sin backend). La página de Inicio tiene un globo 3D interactivo (con [globe.gl](https://globe.gl/)), y el resto de las secciones (accesibles desde el menú desplegable ☰) consumen APIs públicas gratuitas de la NASA, The Space Devs y CelesTrak:
 
 - **NASA APOD** — foto/video astronómico del día, con buscador por fecha y "sorpréndeme".
 - **NASA Mars Rover Photos** — últimas fotos de los rovers, filtrables por cámara.
 - **NASA EPIC** — fotos reales y recientes de la Tierra completa (satélite DSCOVR).
 - **NASA NeoWs** — asteroides que pasan cerca de la Tierra hoy, mostrados en un mapa del sistema solar.
 - **Launch Library 2 (The Space Devs)** — lanzamientos de SpaceX próximos y pasados, con cuenta regresiva en vivo.
-- **wheretheiss.at** — posición en tiempo real de la Estación Espacial Internacional (ISS), más su transmisión oficial en vivo de la NASA.
+- **wheretheiss.at** — posición en tiempo real de la Estación Espacial Internacional (ISS), reflejada como un punto en el globo de Inicio.
+- **CelesTrak + satellite.js** — datos orbitales reales (TLE) de varios satélites, con la posición calculada en el navegador usando el modelo SGP4.
 
 ## Funcionalidades
 
@@ -16,8 +17,8 @@ Proyecto de portafolio hecho con **HTML + CSS + JavaScript puro** (sin framework
 - 🖼️ **Foto del día (APOD)**: elige cualquier fecha con el calendario, o usa "🎲 Sorpréndeme" para una fecha al azar desde 1995.
 - 🔴 **Marte**: elige rover (Curiosity, Perseverance, Opportunity, Spirit) y filtra por cámara específica.
 - 🌍 **Tierra**: imágenes reales de la Tierra completa tomadas hoy por el satélite DSCOVR.
-- ☄️ **Asteroides**: un mapa esquemático del sistema solar interior (Sol, Mercurio, Venus, Tierra, Marte a escala relativa) con los asteroides de hoy dibujados alrededor de la Tierra — más cerca del punto azul de la Tierra significa que pasa más cerca en la realidad. Haz clic en cualquier punto para ver nombre, tamaño, distancia y velocidad.
-- 📷 **Cámara ISS**: transmisión oficial en vivo (24/7) de la NASA desde la Estación Espacial Internacional, más su posición, altitud y velocidad en tiempo real — y esa misma posición se refleja como un punto que se mueve sobre el globo de Inicio.
+- ☄️ **Asteroides**: elige cualquier día de los próximos 7, y ve un mapa esquemático del sistema solar interior (Sol, Mercurio, Venus, Tierra, Marte a escala relativa) con los asteroides de ese día dibujados alrededor de la Tierra — más cerca del punto azul significa que pasa más cerca en la realidad, y el tamaño del punto refleja el diámetro estimado (escala logarítmica, porque van desde metros hasta kilómetros). Debajo hay una tabla ordenable (clic en cualquier columna) con todos los datos; hacer clic en un punto o en una fila muestra nombre, fecha y hora exacta del acercamiento, tamaño, distancia y velocidad.
+- 🛰️ **Satélites**: elige entre 5 satélites reales (ISS, Hubble, la estación espacial china Tiangong, un satélite meteorológico y uno geoestacionario) y sigue su posición en vivo sobre un mapa del mundo — calculada en tu propio navegador a partir de datos orbitales reales (TLE) de CelesTrak, con el mismo modelo matemático (SGP4) que usan las agencias espaciales.
 - 🚀 **Lanzamientos**: toggle entre **Próximos** (con cuenta regresiva en vivo día:hora:min:seg) y **Pasados** (con resultado éxito/falló). Todas las horas se muestran explícitamente en horario de Chile (`America/Santiago`), sin importar la zona horaria de quien abra la página.
 - ⭐ **Favoritos**: marca cualquier foto (del día, de Marte o de la Tierra) con el botón ☆ y queda guardada en tu navegador (`localStorage`), persiste aunque cierres o recargues la página. Se ven todas juntas en la pestaña "Favoritos".
 
@@ -89,11 +90,12 @@ Launch Library 2 tiene un límite de **15 pedidos por hora sin registrarte** (co
 
 ```
 explorador-espacial/
-├── index.html   → estructura de la página (menú desplegable + 8 secciones)
-├── style.css    → estilos (tema oscuro espacial)
-├── script.js    → lógica: menú, fetch a las APIs, favoritos, mapa de asteroides (SVG), lanzamientos, posición de la ISS
-├── globe.js     → lógica del globo 3D interactivo (Inicio): rotación, países, sombra de noche
-└── README.md    → este archivo
+├── index.html    → estructura de la página (menú desplegable + 8 secciones)
+├── style.css     → estilos (tema oscuro espacial)
+├── script.js     → lógica: menú, fetch a las APIs, favoritos, mapa y tabla de asteroides (SVG), lanzamientos, posición de la ISS para el globo
+├── globe.js      → lógica del globo 3D interactivo (Inicio): rotación, países, sombra de noche
+├── satellites.js → lógica de la pestaña "Satélites": TLE de CelesTrak + cálculo de órbita real (SGP4) con satellite.js
+└── README.md     → este archivo
 ```
 
 ### Sobre el globo (`globe.js`)
@@ -101,6 +103,21 @@ explorador-espacial/
 Usa una librería llamada [globe.gl](https://globe.gl/) (basada en Three.js/WebGL), que se carga desde internet mediante un CDN — no necesitas instalar nada. El mapa de países viene de un dataset público (Natural Earth) y el sombreado de noche se calcula con la librería `solar-calculator`, ubicando en qué parte del planeta el sol no está iluminando en este momento.
 
 Si en algún momento quieres profundizar en esto, la [documentación de globe.gl](https://github.com/vasturiano/globe.gl) tiene muchos más ejemplos (calor por país, rutas de vuelo, anillos de eventos, etc.) que se pueden agregar de la misma forma.
+
+### Sobre los satélites (`satellites.js`)
+
+Antes esta pestaña era una transmisión de video en vivo de YouTube, pero dependía de que NASA estuviera transmitiendo justo en ese momento bajo un canal específico — si no, YouTube mostraba un error feo en vez de un aviso. Se reemplazó por algo más robusto y más educativo: calcular la posición real de varios satélites nosotros mismos, en el navegador.
+
+El proceso, resumido:
+
+1. Cada satélite tiene un **número NORAD** (su identificador único en órbita, por ejemplo la ISS es el 25544).
+2. Le pedimos a [CelesTrak](https://celestrak.org/) sus **TLE** ("Two-Line Elements"): dos líneas de números que describen matemáticamente su órbita en un instante dado. Es información pública que se actualiza todos los días.
+3. Le pasamos ese TLE a la librería [satellite.js](https://github.com/shashwatak/satellite-js), que implementa el modelo **SGP4** — el mismo algoritmo estándar que usan agencias espaciales reales para predecir dónde va a estar un objeto en órbita.
+4. Repetimos el cálculo cada 2 segundos (sin volver a pedirle nada a CelesTrak) para que el punto se mueva solo en el mapa.
+
+El mapa es una imagen del planeta (la misma textura que usa el globo 3D) con un punto posicionado por CSS según la latitud/longitud calculada — una técnica simple y sin librerías de mapas.
+
+⚠️ Si CelesTrak no responde o el navegador bloquea la consulta (por ejemplo, por una extensión de bloqueo de anuncios agresiva), la pestaña te lo va a decir explícitamente en vez de quedarse cargando para siempre.
 
 ---
 
@@ -116,7 +133,7 @@ Hay dos formas. Si nunca has usado GitHub, empieza por la Opción A (sin usar la
 2. Arriba a la derecha, haz clic en el **+** → **New repository**.
 3. Ponle un nombre, por ejemplo `explorador-espacial`. Déjalo en **Public**. No marques "Add a README" (ya tienes uno). Clic en **Create repository**.
 4. En la página del repo recién creado, busca el link que dice **"uploading an existing file"**.
-5. Arrastra los 5 archivos (`index.html`, `style.css`, `script.js`, `globe.js`, `README.md`) a esa zona.
+5. Arrastra los 6 archivos (`index.html`, `style.css`, `script.js`, `globe.js`, `satellites.js`, `README.md`) a esa zona.
 6. Abajo escribe un mensaje como "Primera versión del proyecto" y clic en **Commit changes**.
 
 ### Opción B: Usando git desde la terminal (recomendado para practicar, así lo vas a usar en el resto de tu carrera)
@@ -161,10 +178,13 @@ Cada vez que hagas `git push` con cambios nuevos, GitHub Pages se actualiza solo
 
 - **Los asteroides no se veían en el mapa**: el bug estaba en cómo se dibujaba el SVG (se armaba como texto HTML con `innerHTML`, y algunos navegadores no crean bien esos elementos así). Se reescribió usando `document.createElementNS`, la forma "correcta" de crear elementos SVG por JavaScript — más código, pero sin ese problema. Si el mapa alguna vez aparece sin ningún punto, ahora también te avisa con un texto ("No hay asteroides catalogados para hoy...") para que sepas si es que de verdad no hay datos ese día, o si el problema es otro (por ejemplo, el límite de la `DEMO_KEY`, que ahora también se detecta y avisa específicamente en todas las pestañas que usan la key de la NASA).
 - **Menú a la derecha**: se movió el botón de navegación a la esquina superior derecha.
+- **Se quitó la pestaña de video (Cámara ISS)**: dependía de que YouTube tuviera una transmisión activa justo en ese momento bajo un canal específico, y cuando no la tenía mostraba un error feo en vez de un aviso amigable. Se reemplazó por la pestaña **Satélites**, que calcula posiciones reales con datos orbitales (TLE + SGP4) en vez de depender de un video — ver la sección "Sobre los satélites" más arriba.
+- **Asteroides ampliado**: ahora se pueden ver los próximos 7 días (no solo hoy), el tamaño de cada punto refleja el diámetro real del asteroide, y hay una tabla ordenable debajo del mapa con todos los datos (distancia, diámetro, velocidad, riesgo).
 
 ## Ideas para seguir practicando (si quieres seguir ampliándolo)
 
 - Buscador de país por nombre en el globo (que centre la cámara ahí directamente).
+- Agregar más satélites al selector de la pestaña Satélites (CelesTrak tiene miles, agrupados por categoría — por ejemplo el grupo `starlink` o `gnss`).
 - Agregar Júpiter y Saturno al mapa del sistema solar (con otra escala, porque están mucho más lejos).
 - Mostrar el "manifiesto" de misión de cada rover (total de fotos, sols activos, estado).
 - Buscador libre en la librería de imágenes de la NASA (`images-api.nasa.gov`) por palabra clave.
@@ -176,5 +196,6 @@ Cada vez que hagas `git push` con cambios nuevos, GitHub Pages se actualiza solo
 
 - [NASA Open APIs](https://api.nasa.gov/)
 - [Launch Library 2 — The Space Devs](https://thespacedevs.com/llapi)
-- [wheretheiss.at](https://wheretheiss.at/) (posición de la ISS) y [canal oficial de la NASA en YouTube](https://www.youtube.com/channel/UCLA_DiR1FfKNvjuUpBHmylQ/live) (video en vivo)
+- [wheretheiss.at](https://wheretheiss.at/) (posición de la ISS para el globo de Inicio)
+- [CelesTrak](https://celestrak.org/) (datos orbitales/TLE) y [satellite.js](https://github.com/shashwatak/satellite-js) (cálculo de órbitas con SGP4)
 - [globe.gl](https://globe.gl/) (globo 3D) y [dataset de países de Natural Earth](https://github.com/vasturiano/globe.gl/blob/master/example/datasets/ne_110m_admin_0_countries.geojson)

@@ -118,7 +118,7 @@ if (container && window.Globe) {
 
   // -----------------------------------------------------------
   // Punto de la Estación Espacial Internacional (ISS) en vivo
-  // La posición real la calcula script.js (pestaña "Cámara ISS") y nos
+  // La posición real la calcula script.js (usando wheretheiss.at) y nos
   // avisa mandando un evento "iss-update" — así este archivo no necesita
   // saber nada de esa API, solo escuchar el evento.
   // -----------------------------------------------------------

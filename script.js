@@ -23,7 +23,7 @@
 // DEMO_KEY funciona sin registrarte, pero tiene un límite bajo
 // (30 pedidos por hora / 50 por día). Para uso real, saca tu propia
 // key gratis en 30 segundos aquí: https://api.nasa.gov/
-   const NASA_API_KEY = "5hcEbI4PQPlNmUCsaDsxjxBxnUREaybWDGBvNHbI";
+const NASA_API_KEY = "DEMO_KEY";
 
 // Cámaras disponibles por rover (la NASA no las llama igual en todos)
 const ROVER_CAMERAS = {
@@ -489,17 +489,36 @@ async function loadEarthPhotos() {
 }
 
 // -----------------------------------------------------------
-// 4) ASTEROIDES CERCANOS HOY (NASA NeoWs)
+// 4) ASTEROIDES CERCANOS (NASA NeoWs) — próximos 7 días
 // Docs: https://api.nasa.gov/ (sección Asteroids NeoWs)
+//
+// La API NeoWs permite pedir hasta 7 días de una sola vez (un solo
+// pedido a la NASA, sin gastar más cupo de la key), y nos devuelve
+// los asteroides agrupados por fecha. Guardamos todo en caché
+// (asteroidsByDate) y el selector de día solo cambia qué grupo se
+// muestra, sin volver a pedir nada a la NASA.
 // -----------------------------------------------------------
+let asteroidsByDate = {};
+let currentAsteroidDate = null;
+let asteroidSortKey = "distance";
+let asteroidSortDir = 1; // 1 = ascendente, -1 = descendente
+
+function isoDate(d) {
+  return d.toISOString().split("T")[0];
+}
+
 async function loadAsteroids() {
   const loadingEl = document.getElementById("asteroids-loading");
   const errorEl = document.getElementById("asteroids-error");
 
   try {
-    // yyyy-mm-dd de hoy
-    const today = new Date().toISOString().split("T")[0];
-    const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${today}&end_date=${today}&api_key=${NASA_API_KEY}`;
+    const start = new Date();
+    const end = new Date();
+    end.setDate(end.getDate() + 6); // 7 días en total (hoy + 6 más)
+
+    const startStr = isoDate(start);
+    const endStr = isoDate(end);
+    const url = `https://api.nasa.gov/neo/rest/v1/feed?start_date=${startStr}&end_date=${endStr}&api_key=${NASA_API_KEY}`;
 
     const response = await fetch(url);
 
@@ -511,26 +530,79 @@ async function loadAsteroids() {
     }
 
     const data = await response.json();
-    let asteroids = data.near_earth_objects[today] || [];
+    asteroidsByDate = data.near_earth_objects || {};
 
-    // Ordenamos por distancia (los más cercanos primero) y limitamos la cantidad
-    // para que el mapa no se sature de puntos
-    asteroids.sort(
-      (a, b) =>
-        parseFloat(a.close_approach_data[0].miss_distance.kilometers) -
-        parseFloat(b.close_approach_data[0].miss_distance.kilometers)
-    );
-    asteroids = asteroids.slice(0, 16);
-
-    buildSolarMap(asteroids);
+    populateAsteroidDaySelect(startStr);
+    showAsteroidsForDate(startStr);
 
     loadingEl.classList.add("hidden");
   } catch (err) {
     console.error(err);
     loadingEl.classList.add("hidden");
-    errorEl.textContent = `No se pudieron cargar los asteroides de hoy (${err.message}).`;
+    errorEl.textContent = `No se pudieron cargar los asteroides (${err.message}).`;
     errorEl.classList.remove("hidden");
   }
+}
+
+// Llena el <select> de días con "Hoy", "Mañana" y los siguientes 5 días
+function populateAsteroidDaySelect(defaultDateStr) {
+  const select = document.getElementById("asteroid-day-select");
+  if (!select) return;
+
+  select.innerHTML = "";
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    const dateStr = isoDate(d);
+
+    let label;
+    if (i === 0) label = "Hoy";
+    else if (i === 1) label = "Mañana";
+    else label = d.toLocaleDateString("es-CL", { weekday: "short", day: "numeric", month: "short" });
+
+    const opt = document.createElement("option");
+    opt.value = dateStr;
+    opt.textContent = label;
+    select.appendChild(opt);
+  }
+  select.value = defaultDateStr;
+}
+
+// Ordena la lista de asteroides según la columna elegida en la tabla
+function sortAsteroids(list) {
+  const dir = asteroidSortDir;
+  const value = (ast) => {
+    switch (asteroidSortKey) {
+      case "name":
+        return ast.name;
+      case "diameter":
+        return ast.estimated_diameter.kilometers.estimated_diameter_max;
+      case "speed":
+        return parseFloat(ast.close_approach_data[0].relative_velocity.kilometers_per_hour);
+      case "hazard":
+        return ast.is_potentially_hazardous_asteroid ? 1 : 0;
+      case "distance":
+      default:
+        return parseFloat(ast.close_approach_data[0].miss_distance.kilometers);
+    }
+  };
+
+  return [...list].sort((a, b) => {
+    const va = value(a);
+    const vb = value(b);
+    if (typeof va === "string") return dir * va.localeCompare(vb);
+    return dir * (va - vb);
+  });
+}
+
+// Muestra (mapa + tabla) los asteroides de una fecha ya cargada en caché
+function showAsteroidsForDate(dateStr) {
+  currentAsteroidDate = dateStr;
+  let asteroids = asteroidsByDate[dateStr] || [];
+  asteroids = sortAsteroids(asteroids).slice(0, 20);
+
+  buildSolarMap(asteroids);
+  buildAsteroidTable(asteroids);
 }
 
 // -----------------------------------------------------------
@@ -623,6 +695,12 @@ function buildSolarMap(asteroids) {
   const minLog = Math.log10(7000);
   const maxLog = Math.log10(20000000);
 
+  // Escala logarítmica también para el tamaño del punto: los asteroides
+  // van desde ~5 metros hasta varios km de diámetro, una diferencia enorme.
+  // Sin escala logarítmica, casi todos se verían del mismo tamaño mínimo.
+  const minDiamLog = Math.log10(0.005); // 5 metros
+  const maxDiamLog = Math.log10(5); // 5 km
+
   asteroids.forEach((ast, i) => {
     const approach = ast.close_approach_data[0];
     const distanceKm = parseFloat(approach.miss_distance.kilometers);
@@ -638,10 +716,13 @@ function buildSolarMap(asteroids) {
       y: earthPos.y + localR * Math.sin(toRad(angleDeg)),
     };
 
-    const sizePx = Math.min(9, Math.max(3, diamMaxKm * 2 + 3));
+    let tSize = (Math.log10(Math.max(diamMaxKm, 0.005)) - minDiamLog) / (maxDiamLog - minDiamLog);
+    tSize = Math.min(1, Math.max(0, tSize));
+    const sizePx = 3 + tSize * 11; // entre 3px (chico) y 14px (grande)
     const color = ast.is_potentially_hazardous_asteroid ? "#ff6b6b" : "#37c9ff";
 
     const circle = svgEl("circle", {
+      id: `ast-dot-${ast.id}`,
       class: "asteroid-dot",
       "data-index": i,
       cx: pos.x.toFixed(1),
@@ -655,7 +736,7 @@ function buildSolarMap(asteroids) {
     const title = svgEl("title");
     title.textContent = ast.name;
     circle.appendChild(title);
-    circle.addEventListener("click", () => showAsteroidInfo(ast));
+    circle.addEventListener("click", () => selectAsteroid(ast));
 
     svg.appendChild(circle);
   });
@@ -670,7 +751,7 @@ function buildSolarMap(asteroids) {
       fill: "#9aa2c0",
       "font-size": "13",
     });
-    msg.textContent = "No hay asteroides catalogados para hoy en el registro de la NASA.";
+    msg.textContent = "No hay asteroides catalogados para ese día en el registro de la NASA.";
     svg.appendChild(msg);
   }
 }
@@ -682,6 +763,8 @@ function showAsteroidInfo(ast) {
   const diamMax = ast.estimated_diameter.kilometers.estimated_diameter_max.toFixed(2);
   const distanceKm = Math.round(parseFloat(approach.miss_distance.kilometers)).toLocaleString("es-CL");
   const speedKmH = Math.round(parseFloat(approach.relative_velocity.kilometers_per_hour)).toLocaleString("es-CL");
+  // close_approach_date_full viene como "2026-Sep-14 08:23" directo de la NASA (hora UTC)
+  const fechaAcercamiento = approach.close_approach_date_full || approach.close_approach_date;
 
   infoPanel.innerHTML = `
     <div class="info-icon">☄️</div>
@@ -693,13 +776,87 @@ function showAsteroidInfo(ast) {
             : '<span class="launch-badge success">Sin riesgo</span>'
         }
       </h3>
+      <p>🕒 Acercamiento máximo: ${fechaAcercamiento} UTC</p>
       <p>📏 Diámetro estimado: ${diamMin} - ${diamMax} km</p>
-      <p>📍 Distancia mínima hoy: ${distanceKm} km</p>
+      <p>📍 Distancia mínima: ${distanceKm} km de ${approach.orbiting_body === "Earth" ? "la Tierra" : approach.orbiting_body}</p>
       <p>💨 Velocidad relativa: ${speedKmH} km/h</p>
     </div>
   `;
   infoPanel.classList.remove("hidden");
 }
+
+// Marca visualmente el asteroide elegido (en el mapa y en la tabla) y
+// muestra su detalle — así se ve la relación entre el punto, la fila y
+// la info, sin importar si se hizo clic en el mapa o en la lista.
+function selectAsteroid(ast) {
+  document.querySelectorAll(".asteroid-dot.selected").forEach((el) => el.classList.remove("selected"));
+  document.getElementById(`ast-dot-${ast.id}`)?.classList.add("selected");
+
+  document.querySelectorAll(".asteroid-table tbody tr.selected-row").forEach((el) =>
+    el.classList.remove("selected-row")
+  );
+  document.querySelector(`.asteroid-table tbody tr[data-ast-id="${ast.id}"]`)?.classList.add("selected-row");
+
+  showAsteroidInfo(ast);
+}
+
+// Construye la lista/tabla ordenable debajo del mapa
+function buildAsteroidTable(asteroids) {
+  const tbody = document.getElementById("asteroid-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  asteroids.forEach((ast) => {
+    const approach = ast.close_approach_data[0];
+    const distanceKm = Math.round(parseFloat(approach.miss_distance.kilometers));
+    const diamMax = ast.estimated_diameter.kilometers.estimated_diameter_max;
+    const speedKmH = Math.round(parseFloat(approach.relative_velocity.kilometers_per_hour));
+
+    const tr = document.createElement("tr");
+    tr.dataset.astId = ast.id;
+    tr.innerHTML = `
+      <td>${ast.name}</td>
+      <td>${distanceKm.toLocaleString("es-CL")} km</td>
+      <td>${diamMax.toFixed(2)} km</td>
+      <td>${speedKmH.toLocaleString("es-CL")} km/h</td>
+      <td>${
+        ast.is_potentially_hazardous_asteroid
+          ? '<span class="launch-badge failure">Sí</span>'
+          : '<span class="launch-badge success">No</span>'
+      }</td>
+    `;
+    tr.addEventListener("click", () => selectAsteroid(ast));
+    tbody.appendChild(tr);
+  });
+
+  if (asteroids.length === 0) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td colspan="5" class="muted">No hay asteroides catalogados para ese día.</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+// Encabezados de la tabla: clic para ordenar por esa columna
+// (un segundo clic sobre la misma columna invierte el orden)
+document.querySelectorAll("#asteroid-table th[data-sort]").forEach((th) => {
+  th.addEventListener("click", () => {
+    const key = th.dataset.sort;
+    if (asteroidSortKey === key) {
+      asteroidSortDir *= -1;
+    } else {
+      asteroidSortKey = key;
+      asteroidSortDir = 1;
+    }
+    document.querySelectorAll("#asteroid-table th[data-sort]").forEach((el) => el.classList.remove("sorted-asc", "sorted-desc"));
+    th.classList.add(asteroidSortDir === 1 ? "sorted-asc" : "sorted-desc");
+
+    if (currentAsteroidDate) showAsteroidsForDate(currentAsteroidDate);
+  });
+});
+
+document.getElementById("asteroid-day-select")?.addEventListener("change", (e) => {
+  showAsteroidsForDate(e.target.value);
+});
 
 // -----------------------------------------------------------
 // 5) LANZAMIENTOS DE SPACEX: próximos y pasados + cuenta regresiva
@@ -871,19 +1028,19 @@ document.getElementById("launches-past-btn").addEventListener("click", (e) => {
 });
 
 // -----------------------------------------------------------
-// 6) POSICIÓN EN VIVO DE LA ISS
+// 6) POSICIÓN EN VIVO DE LA ISS (para el punto en el globo 3D de Inicio)
 // API: https://wheretheiss.at (gratis, sin api key)
 //
-// Esta función no solo actualiza el texto de la pestaña "Cámara ISS":
-// también avisa al globo 3D (globe.js) de la nueva posición con un
-// "evento personalizado" (CustomEvent). Así, globe.js puede dibujar un
-// puntito que se mueve sobre el globo sin que los dos archivos tengan
-// que conocerse directamente entre sí.
+// Esta función corre en segundo plano todo el tiempo y avisa al globo 3D
+// (globe.js) de la nueva posición con un "evento personalizado"
+// (CustomEvent). Así, globe.js puede dibujar un puntito que se mueve
+// sobre el globo sin que los dos archivos tengan que conocerse
+// directamente entre sí.
+//
+// (La pestaña "Satélites", con más detalle y más satélites además de la
+// ISS, se calcula aparte en satellites.js usando datos orbitales reales.)
 // -----------------------------------------------------------
 async function updateIssPosition() {
-  const telemetryEl = document.getElementById("iss-telemetry");
-  if (!telemetryEl) return;
-
   try {
     const response = await fetch("https://api.wheretheiss.at/v1/satellites/25544");
 
@@ -893,25 +1050,15 @@ async function updateIssPosition() {
 
     const data = await response.json();
 
-    const lat = data.latitude.toFixed(2);
-    const lng = data.longitude.toFixed(2);
-    const alt = Math.round(data.altitude);
-    const vel = Math.round(data.velocity);
-    const deDia = data.visibility === "daylight";
-
-    telemetryEl.innerHTML = `
-      <p>📍 Latitud: ${lat}° · Longitud: ${lng}°</p>
-      <p>📏 Altitud: ${alt.toLocaleString("es-CL")} km · 💨 Velocidad: ${vel.toLocaleString("es-CL")} km/h</p>
-      <p>${deDia ? "☀️ Iluminada por el sol" : "🌑 Sobre el lado nocturno de la Tierra"}</p>
-    `;
-
-    // Avisamos al globo 3D (ver globe.js) para que mueva el punto de la ISS
+    // Avisamos al globo 3D (ver globe.js) para que mueva el punto de la ISS.
+    // Esto corre en segundo plano sin importar qué pestaña esté abierta
+    // (antes dependía de que existiera la pestaña "Cámara ISS", que ya no existe:
+    // el detalle de satélites ahora vive en la pestaña "Satélites", ver satellites.js).
     window.dispatchEvent(
       new CustomEvent("iss-update", { detail: { lat: data.latitude, lng: data.longitude } })
     );
   } catch (err) {
-    console.error(err);
-    telemetryEl.innerHTML = `<p class="muted">No se pudo obtener la posición de la ISS (${err.message}).</p>`;
+    console.error("No se pudo actualizar la posición de la ISS para el globo:", err);
   }
 }
 

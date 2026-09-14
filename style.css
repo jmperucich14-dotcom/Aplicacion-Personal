@@ -115,34 +115,53 @@ body {
   font-size: 0.9rem;
 }
 
-/* ---- Cámara en vivo (ISS) ---- */
-.video-wrap {
+/* ---- Satélites en vivo (TLE + SGP4) ---- */
+.sat-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.sat-controls select {
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.sat-map-wrap {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.sat-map {
   position: relative;
   width: 100%;
-  padding-top: 56.25%; /* proporción 16:9 */
+  aspect-ratio: 2 / 1;
+  background-image: url("https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg");
+  background-size: cover;
+  background-position: center;
   border-radius: 16px;
   overflow: hidden;
   border: 1px solid var(--border);
-  background: #000;
 }
 
-.video-wrap iframe {
+.sat-marker {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ffcf4d;
+  box-shadow: 0 0 14px 4px rgba(255, 207, 77, 0.75);
+  transform: translate(-50%, -50%);
+  transition: left 1.6s linear, top 1.6s linear;
 }
 
-.iss-telemetry {
-  margin-top: 18px;
-  padding: 16px 20px;
-}
-
-.iss-telemetry p {
-  margin: 4px 0;
-}
 
 /* ---- Mapa del sistema solar (Asteroides) ---- */
 .solar-map-wrap {
@@ -188,6 +207,28 @@ body {
   filter: brightness(1.3);
 }
 
+.asteroid-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.asteroid-controls select {
+  background: var(--bg-card);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+#solar-map .asteroid-dot.selected {
+  stroke: #fff;
+  stroke-width: 2;
+}
+
 .solar-legend {
   display: flex;
   flex-wrap: wrap;
@@ -213,6 +254,67 @@ body {
 
 .dot-hazard {
   background: var(--error);
+}
+
+/* ---- Tabla ordenable de asteroides ---- */
+.asteroid-list-wrap {
+  margin-top: 22px;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+.asteroid-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 480px;
+  font-size: 0.88rem;
+}
+
+.asteroid-table th,
+.asteroid-table td {
+  padding: 10px 14px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.asteroid-table thead th {
+  background: var(--bg-card);
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.asteroid-table thead th:hover {
+  color: var(--text);
+}
+
+.asteroid-table thead th.sorted-asc::after {
+  content: " ▲";
+  color: var(--accent-2);
+}
+
+.asteroid-table thead th.sorted-desc::after {
+  content: " ▼";
+  color: var(--accent-2);
+}
+
+.asteroid-table tbody tr {
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+}
+
+.asteroid-table tbody tr:hover {
+  background: rgba(124, 92, 255, 0.1);
+}
+
+.asteroid-table tbody tr.selected-row {
+  background: rgba(124, 92, 255, 0.22);
+}
+
+.asteroid-table tbody tr:last-child {
+  border-bottom: none;
 }
 
 /* ---- Menú desplegable de navegación ---- */
